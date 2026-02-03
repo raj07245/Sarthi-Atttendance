@@ -1,0 +1,16 @@
+# Mac
+.DS_Store
+
+# Spring Boot
+target/
+.idea/
+*.log
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Face data (optional but recommended)
+encodings/
+face-datasets/
