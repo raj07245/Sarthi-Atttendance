@@ -1,9 +1,7 @@
 package com.smart.face.attendance.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -11,6 +9,8 @@ import java.time.LocalTime;
 @Entity
 @Getter @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Lecture {
 
     @Id
@@ -21,9 +21,18 @@ public class Lecture {
 
     private LocalDate date;
 
+    private String room;
+
     private LocalTime startTime;
     private LocalTime endTime;
 
     @ManyToOne
+    @JoinColumn(name = "teacher_id")
     private User teacher;
+
+    private Boolean active;
+
+    public boolean isActive() {
+        return false;
+    }
 }

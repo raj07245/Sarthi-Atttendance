@@ -33,6 +33,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers("/api/dataset/**").permitAll()
                         .requestMatchers("/api/face/**").permitAll()
+                        .requestMatchers("/lecture/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess ->

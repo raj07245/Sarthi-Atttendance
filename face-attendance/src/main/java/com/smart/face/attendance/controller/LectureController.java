@@ -2,60 +2,61 @@ package com.smart.face.attendance.controller;
 
 import com.smart.face.attendance.entity.Lecture;
 import com.smart.face.attendance.entity.UserDetailsImpl;
-import com.smart.face.attendance.repository.LectureRepository;
-import com.smart.face.attendance.service.LectureAttendanceService;
+import com.smart.face.attendance.service.LectureService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDate;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/lecture")
 @RequiredArgsConstructor
 public class LectureController {
 
-    private final LectureRepository lectureRepo;
-    private final LectureAttendanceService service;
-    private final RestTemplate restTemplate;
+    private final LectureService lectureService;
 
-    @PostMapping
-    public Lecture createLecture(
-            @AuthenticationPrincipal UserDetailsImpl user,
-            @RequestBody Lecture lecture
-    ) {
-        lecture.setTeacher(user.getUser());
-        lecture.setDate(LocalDate.now());
-        return lectureRepo.save(lecture);
+
+    // ✅ CREATE
+    @PostMapping("/create")
+    public ResponseEntity<?> createLecture(
+            @RequestParam String subject,
+            @RequestParam String room,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ){
+
+        Lecture lecture = lectureService.createLecture(
+                subject,
+                room,
+                userDetails.getUser()
+        );
+
+        return ResponseEntity.ok(lecture);
     }
 
-    @PostMapping("/{lectureId}/scan")
-    public ResponseEntity<?> scanLecture(
-            @PathVariable Long lectureId
-    ) {
-        Lecture lecture = lectureRepo.findById(lectureId)
-                .orElseThrow(() -> new RuntimeException("Lecture not found"));
 
-        String url = "http://127.0.0.1:5001/admin/"
-                + lecture.getTeacher().getId()
-                + "/attendance";
+    // ✅ START
+    @PostMapping("/{id}/start")
+    public ResponseEntity<?> startLecture(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ){
 
-        Map<String, Object> res =
-                restTemplate.postForObject(url, null, Map.class);
+        lectureService.startLecture(id, userDetails.getUser().getId());
 
-        // ✅ CORRECT KEY + NULL SAFETY
-        List<Integer> presentIds =
-                Optional.ofNullable((List<Integer>) res.get("matched"))
-                        .orElse(Collections.emptyList());
+        return ResponseEntity.ok("Lecture Started ✅");
+    }
 
-        service.markAttendance(lecture, presentIds);
 
-        return ResponseEntity.ok(presentIds);
+    // ✅ END
+    @PostMapping("/{id}/end")
+    public ResponseEntity<?> endLecture(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ){
+
+        lectureService.endLecture(id, userDetails.getUser().getId());
+
+        return ResponseEntity.ok("Lecture Ended ✅");
     }
 }

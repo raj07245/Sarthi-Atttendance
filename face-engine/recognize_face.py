@@ -1,59 +1,64 @@
-import cv2
 import face_recognition
-import pickle
+import cv2
 import os
-import time
-import numpy as np
+import pickle
+
 
 def recognize_face(admin_id):
 
-    base_dir = f"encodings/admin_{admin_id}"
+    enc_path = f"encodings/admin_{admin_id}.pkl"
 
-    if not os.path.exists(base_dir):
-        print("❌ No encodings folder:", base_dir)
-        return []
+    if not os.path.exists(enc_path):
+        raise Exception("No encodings found. Register faces first.")
 
-    known_encodings = []
-    known_ids = []
+    # ✅ load encodings
+    with open(enc_path, "rb") as f:
+        data = pickle.load(f)
 
-    for file in os.listdir(base_dir):
-        if file.endswith(".pkl"):
-            person_id = int(file.replace("person_", "").replace(".pkl", ""))
-            with open(os.path.join(base_dir, file), "rb") as f:
-                encs = pickle.load(f)
-                for e in encs:
-                    known_encodings.append(e)
-                    known_ids.append(person_id)
+    known_encodings = data["encodings"]
+    known_ids = data["ids"]
 
-    if not known_encodings:
-        print("❌ No face data inside folder")
-        return []
+    video = cv2.VideoCapture(0)
 
-    cap = cv2.VideoCapture(0)
-    start = time.time()
-    present_ids = set()
+    print("📸 Multi-face attendance started...")
 
-    print("📸 Attendance scan started...")
+    detected_ids = set()
 
-    while time.time() - start < 15:
-        ret, frame = cap.read()
-        if not ret:
+    frame_count = 0
+    MAX_FRAMES = 20   # ⭐ scan few frames for accuracy
+
+    while frame_count < MAX_FRAMES:
+
+        success, frame = video.read()
+
+        if not success:
             continue
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        boxes = face_recognition.face_locations(rgb)
 
-        encodings = face_recognition.face_encodings(rgb, boxes)
+        faces = face_recognition.face_locations(rgb)
+        encodings = face_recognition.face_encodings(rgb, faces)
 
-        for enc in encodings:
+        for face_encoding in encodings:
+
             matches = face_recognition.compare_faces(
-                known_encodings, enc, tolerance=0.45
+                known_encodings,
+                face_encoding,
+                tolerance=0.5   # ⭐ tweak later
             )
 
             if True in matches:
-                idx = matches.index(True)
-                present_ids.add(known_ids[idx])
 
-    cap.release()
-    print("🚀 Sending response:", list(present_ids))
-    return list(present_ids)
+                idx = matches.index(True)
+                person_id = known_ids[idx]
+
+                detected_ids.add(person_id)
+
+        frame_count += 1
+
+    video.release()
+    cv2.destroyAllWindows()
+
+    print("✅ Detected:", detected_ids)
+
+    return list(detected_ids)
