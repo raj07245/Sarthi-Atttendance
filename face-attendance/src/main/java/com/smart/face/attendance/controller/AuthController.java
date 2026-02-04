@@ -1,52 +1,39 @@
 package com.smart.face.attendance.controller;
 
-import com.smart.face.attendance.dto.AuthRequest;
-import com.smart.face.attendance.entity.User;
-import com.smart.face.attendance.repository.UserRepository;
+import com.smart.face.attendance.dto.UserRequest;
+import com.smart.face.attendance.entity.UserDetailsImpl;
 import com.smart.face.attendance.security.JwtUtil;
+import com.smart.face.attendance.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
+import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil;
+    private final UserService userService;
     private final AuthenticationManager authenticationManager;
+    private final JwtUtil jwtUtil;
 
+    // ✅ Signup with DTO (organization assign)
     @PostMapping("/signup")
-    public String signup(@RequestBody User user) {
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setRole("USER");
-        user.setFaceRegistered(false);
-        userRepository.save(user);
+    public String signup(@Valid @RequestBody UserRequest req) {
+        userService.signup(req);
         return "User registered";
     }
 
+    // ✅ Login returns JWT
     @PostMapping("/login")
-    public String login(@RequestBody AuthRequest request) {
-
+    public String login(@RequestBody UserRequest req) {
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()));
+                new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword())
+        );
 
-        UserDetails userDetails =
-                new org.springframework.security.core.userdetails.User(
-                        request.getEmail(), "", List.of());
-
+        UserDetailsImpl userDetails = userService.loadUserByUsername(req.getEmail());
         return jwtUtil.generateToken(userDetails);
     }
 }

@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-
 @RestController
 @RequestMapping("/lecture")
 @RequiredArgsConstructor
@@ -16,47 +15,31 @@ public class LectureController {
 
     private final LectureService lectureService;
 
-
-    // ✅ CREATE
     @PostMapping("/create")
-    public ResponseEntity<?> createLecture(
+    public ResponseEntity<Lecture> createLecture(
             @RequestParam String subject,
             @RequestParam String room,
             @AuthenticationPrincipal UserDetailsImpl userDetails
     ){
-
-        Lecture lecture = lectureService.createLecture(
-                subject,
-                room,
-                userDetails.getUser()
-        );
-
+        Lecture lecture = lectureService.createLecture(subject, room, userDetails.getUser());
         return ResponseEntity.ok(lecture);
     }
 
-
-    // ✅ START
     @PostMapping("/{id}/start")
-    public ResponseEntity<?> startLecture(
+    public ResponseEntity<String> startLecture(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetailsImpl userDetails
     ){
-
         lectureService.startLecture(id, userDetails.getUser().getId());
-
         return ResponseEntity.ok("Lecture Started ✅");
     }
 
-
-    // ✅ END
     @PostMapping("/{id}/end")
-    public ResponseEntity<?> endLecture(
+    public ResponseEntity<String> endLecture(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetailsImpl userDetails
     ){
-
         lectureService.endLecture(id, userDetails.getUser().getId());
-
         return ResponseEntity.ok("Lecture Ended ✅");
     }
 }

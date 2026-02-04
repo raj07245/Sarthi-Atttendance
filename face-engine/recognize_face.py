@@ -18,43 +18,50 @@ def recognize_face(admin_id):
     known_encodings = data["encodings"]
     known_ids = data["ids"]
 
-    video = cv2.VideoCapture(0)
+    video = cv2.VideoCapture(0, cv2.CAP_AVFOUNDATION)
+
+    if not video.isOpened():
+        raise Exception("Camera not accessible")
 
     print("📸 Multi-face attendance started...")
 
     detected_ids = set()
-
     frame_count = 0
-    MAX_FRAMES = 20   # ⭐ scan few frames for accuracy
+    MAX_FRAMES = 30   # scan few frames for accuracy
 
     while frame_count < MAX_FRAMES:
 
         success, frame = video.read()
 
-        if not success:
+        if not success or frame is None:
+            print("Frame not captured properly...")
             continue
 
+        # Convert to RGB
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
+        # Detect faces
         faces = face_recognition.face_locations(rgb)
         encodings = face_recognition.face_encodings(rgb, faces)
 
         for face_encoding in encodings:
 
-            matches = face_recognition.compare_faces(
+            face_distances = face_recognition.face_distance(
                 known_encodings,
-                face_encoding,
-                tolerance=0.5   # ⭐ tweak later
+                face_encoding
             )
 
-            if True in matches:
+            best_match_index = face_distances.argmin()
 
-                idx = matches.index(True)
-                person_id = known_ids[idx]
-
+            if face_distances[best_match_index] < 0.5:
+                person_id = known_ids[best_match_index]
                 detected_ids.add(person_id)
 
         frame_count += 1
+
+        # Press ESC to stop
+        if cv2.waitKey(1) == 27:
+            break
 
     video.release()
     cv2.destroyAllWindows()

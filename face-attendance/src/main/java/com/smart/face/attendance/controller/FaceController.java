@@ -1,17 +1,18 @@
 package com.smart.face.attendance.controller;
 
+import com.smart.face.attendance.entity.Person;
+import com.smart.face.attendance.entity.Role;
 import com.smart.face.attendance.entity.User;
 import com.smart.face.attendance.entity.UserDetailsImpl;
+import com.smart.face.attendance.repository.PersonRepository;
 import com.smart.face.attendance.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -20,50 +21,65 @@ import java.util.Map;
 public class FaceController {
 
     private final UserRepository userRepository;
+    private final PersonRepository personRepository;
     private final RestTemplate restTemplate;
 
-
+    // ✅ Role-based face registration
     @PostMapping("/register")
-    public ResponseEntity<?> registerFace(@AuthenticationPrincipal UserDetailsImpl userDetails){
-
-        if (userDetails == null){
-            return ResponseEntity.status(401).body("Unauthorized");
-        }
-
-        User user=userDetails.getUser();
-
-        String url="http://127.0.0.1:5001/user/register-face/"+user.getId();
-        Map res = restTemplate.postForObject(url ,null,Map.class);
-
-        if ((boolean) res.get("success")){
-            user.setFaceRegistered(true);
-            userRepository.save(user);
-            return ResponseEntity.ok("Face register");
-        }
-
-        return ResponseEntity.badRequest().body("face scan failed");
-    }
-
-    @PostMapping("/attendance")
-    public ResponseEntity<?> markAttendance(@AuthenticationPrincipal UserDetailsImpl userDetails) {
-
-        if (userDetails == null){
-            return ResponseEntity.status(401).body("Unauthorized");
-        }
+    public ResponseEntity<?> registerFaces(@AuthenticationPrincipal UserDetailsImpl userDetails){
+        if(userDetails == null) return ResponseEntity.status(401).body("Unauthorized");
 
         User user = userDetails.getUser();
+        String url;
 
-        if (!user.isFaceRegistered()) {
-            return ResponseEntity.badRequest().body("Face not registered");
+        // Determine Python endpoint based on role
+        if(user.getRole() == Role.TEACHER){
+            url = "http://127.0.0.1:5001/admin/" + user.getId() + "/register_face_students";
+        } else if(user.getRole() == Role.MANAGER){
+            url = "http://127.0.0.1:5001/admin/" + user.getId() + "/register_face_employees";
+        } else {
+            return ResponseEntity.status(403).body("Only TEACHER or MANAGER can register faces");
         }
 
-        String url = "http://127.0.0.1:5001/user/attendance/" + user.getId();
-        Map res = new RestTemplate().postForObject(url, null, Map.class);
+        Map<String,Object> res = restTemplate.postForObject(url, null, Map.class);
 
-        if (res != null && Boolean.TRUE.equals(res.get("matched"))){
-            return ResponseEntity.ok("Attendance marked");
+        List<Integer> registeredIds = (List<Integer>) res.get("registered_ids");
+        if(registeredIds != null && !registeredIds.isEmpty()){
+            for(Integer pid : registeredIds){
+                personRepository.findById(pid.longValue()).ifPresent(p -> {
+                    p.setFaceRegistered(true);
+                    personRepository.save(p);
+                });
+            }
+            return ResponseEntity.ok(registeredIds.size() + " faces registered successfully");
         }
 
-        return ResponseEntity.status(401).body("Face not matched");
+        return ResponseEntity.badRequest().body("Face registration failed");
+    }
+
+    // ✅ Role-based attendance marking
+    @PostMapping("/attendance")
+    public ResponseEntity<?> markAttendance(@AuthenticationPrincipal UserDetailsImpl userDetails){
+        if(userDetails == null) return ResponseEntity.status(401).body("Unauthorized");
+
+        User user = userDetails.getUser();
+        String url;
+
+        if(user.getRole() == Role.TEACHER){
+            url = "http://127.0.0.1:5001/admin/" + user.getId() + "/attendance_students";
+        } else if(user.getRole() == Role.MANAGER){
+            url = "http://127.0.0.1:5001/admin/" + user.getId() + "/attendance_employees";
+        } else {
+            return ResponseEntity.status(403).body("Only TEACHER or MANAGER can mark attendance");
+        }
+
+        Map<String,Object> res = restTemplate.postForObject(url, null, Map.class);
+        List<Integer> matchedIds = (List<Integer>) res.get("matched");
+
+        if(matchedIds != null && !matchedIds.isEmpty()){
+            return ResponseEntity.ok(matchedIds.size() + " attendances marked successfully");
+        }
+
+        return ResponseEntity.status(400).body("No faces matched");
     }
 }

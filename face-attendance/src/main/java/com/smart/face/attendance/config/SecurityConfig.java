@@ -16,31 +16,31 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private final JwtFilter jwtFilter;
+    private final AuthenticationProvider authenticationProvider;
 
-
-        private final JwtFilter jwtFilter;
-        private final AuthenticationProvider authenticationProvider;
-
-        @Bean
-        public SecurityFilterChain securityFilterChain (HttpSecurity http)
-            throws Exception {
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/signup",
-                                "/api/auth/login"
-                        ).permitAll()
+                        // Public endpoints
+                        .requestMatchers("/api/auth/signup", "/api/auth/login").permitAll()
                         .requestMatchers("/api/dataset/**").permitAll()
+                        .requestMatchers("/org/**").permitAll()
                         .requestMatchers("/api/face/**").permitAll()
                         .requestMatchers("/lecture/**").permitAll()
+                        .requestMatchers("/attendance/**").permitAll()
+                        .requestMatchers("/employee/**").permitAll()
+                        // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess ->
-                        sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                        sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
                 .authenticationProvider(authenticationProvider)
-                .addFilterBefore(jwtFilter,
-                        UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.antlr.v4.runtime.misc.NotNull;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -32,7 +32,12 @@ public class User implements UserDetails {
 
     private String password;
 
-    private String role;
+    @ManyToOne
+    @JoinColumn(name = "organization_id")
+    private Organization organization;
+
+    @Enumerated(EnumType.STRING)
+    private Role role;
 
     @NotNull
     @Column(nullable = false)
@@ -70,5 +75,8 @@ public class User implements UserDetails {
 
     public boolean isFaceRegistered() {
         return faceRegistered;
+    }
+
+    public void Role(String user) {
     }
 }

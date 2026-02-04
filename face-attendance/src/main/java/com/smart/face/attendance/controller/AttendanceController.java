@@ -22,17 +22,18 @@ public class AttendanceController {
     private final RestTemplate restTemplate;
     private final PersonRepository personRepository;
 
+    // ✅ Teacher scans multi-face lecture
     @PostMapping("/scan")
-    public ResponseEntity<?> scan(
+    public ResponseEntity<List<Integer>> scan(
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
         User admin = userDetails.getUser();
-        String url = "http://127.0.0.1:5001/admin/"
-                + admin.getId()+"/attendance";
+        String url = "http://127.0.0.1:5001/admin/" + admin.getId() + "/attendance";
 
-        Map res = restTemplate.postForObject(url, null, Map.class);
-        System.out.println("RAW RESPONSE = "+ res);
-        List<Integer> ids=(List<Integer>) res.get("presents_ids");
+        Map<String, Object> res = restTemplate.postForObject(url, null, Map.class);
+
+        // ✅ Use correct key from Python response
+        List<Integer> ids = (List<Integer>) res.get("matched");
 
         return ResponseEntity.ok(ids);
     }

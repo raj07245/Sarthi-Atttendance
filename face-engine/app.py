@@ -4,37 +4,43 @@ from recognize_face import recognize_face
 
 app = Flask(__name__)
 
-
-@app.post("/admin/<int:admin_id>/register_face")
-def auto_register_api(admin_id):
-
+# -------------------------
+# Face Registration Endpoints
+# -------------------------
+@app.post("/admin/<int:teacher_id>/register_face_students")
+def register_students(teacher_id):
     try:
-        ids = auto_register(admin_id)
-
-        return jsonify({
-            "registered_ids": ids,
-            "total": len(ids)
-        })
-
+        ids = register_face(teacher_id, role="STUDENT")
+        return jsonify({"registered_ids": ids, "total": len(ids)})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"registered_ids": [], "error": str(e)}), 500
 
-@app.post("/admin/<int:admin_id>/attendance")
-def attendance(admin_id):
-
+@app.post("/admin/<int:manager_id>/register_face_employees")
+def register_employees(manager_id):
     try:
-        matched_ids = recognize_faces(admin_id)
-
-        return jsonify({
-            "matched": matched_ids,     # ⭐ IMPORTANT (Spring expects this)
-            "count": len(matched_ids)
-        })
-
+        ids = register_face(manager_id, role="EMPLOYEE")
+        return jsonify({"registered_ids": ids, "total": len(ids)})
     except Exception as e:
-        return jsonify({
-            "matched": [],
-            "error": str(e)
-        }), 500
+        return jsonify({"registered_ids": [], "error": str(e)}), 500
+
+# -------------------------
+# Attendance Endpoints
+# -------------------------
+@app.post("/admin/<int:teacher_id>/attendance_students")
+def attendance_students(teacher_id):
+    try:
+        matched_ids = recognize_face(teacher_id, role="STUDENT")
+        return jsonify({"matched": matched_ids, "count": len(matched_ids)})
+    except Exception as e:
+        return jsonify({"matched": [], "error": str(e)}), 500
+
+@app.post("/admin/<int:manager_id>/attendance_employees")
+def attendance_employees(manager_id):
+    try:
+        matched_ids = recognize_face(manager_id, role="EMPLOYEE")
+        return jsonify({"matched": matched_ids, "count": len(matched_ids)})
+    except Exception as e:
+        return jsonify({"matched": [], "error": str(e)}), 500
 
 
 if __name__ == "__main__":
