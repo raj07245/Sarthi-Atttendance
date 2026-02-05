@@ -1,67 +1,56 @@
 import face_recognition
 import cv2
-import os
-import pickle
+from encoding_cache import get_cached
 
 
-def recognize_face(admin_id):
+def recognize_face(admin_id, role="STUDENT"):
 
-    enc_path = f"encodings/admin_{admin_id}.pkl"
+    known_encodings, known_ids = get_cached(admin_id, role)
 
-    if not os.path.exists(enc_path):
+    if not known_encodings:
         raise Exception("No encodings found. Register faces first.")
 
-    # ✅ load encodings
-    with open(enc_path, "rb") as f:
-        data = pickle.load(f)
-
-    known_encodings = data["encodings"]
-    known_ids = data["ids"]
-
-    video = cv2.VideoCapture(0, cv2.CAP_AVFOUNDATION)
+    video = cv2.VideoCapture(0)
 
     if not video.isOpened():
         raise Exception("Camera not accessible")
 
-    print("📸 Multi-face attendance started...")
+    print("📸 ULTRA FAST attendance started...")
 
     detected_ids = set()
-    frame_count = 0
-    MAX_FRAMES = 30   # scan few frames for accuracy
 
-    while frame_count < MAX_FRAMES:
+    process_this_frame = True
+    frame_count = 0
+
+    while frame_count < 30:
 
         success, frame = video.read()
 
-        if not success or frame is None:
-            print("Frame not captured properly...")
+        if not success:
             continue
 
-        # Convert to RGB
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        if process_this_frame:
 
-        # Detect faces
-        faces = face_recognition.face_locations(rgb)
-        encodings = face_recognition.face_encodings(rgb, faces)
+            small = cv2.resize(frame, (0,0), fx=0.25, fy=0.25)
+            rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
 
-        for face_encoding in encodings:
+            faces = face_recognition.face_locations(rgb)
+            encodings = face_recognition.face_encodings(rgb, faces)
 
-            face_distances = face_recognition.face_distance(
-                known_encodings,
-                face_encoding
-            )
+            for face_encoding in encodings:
 
-            best_match_index = face_distances.argmin()
+                distances = face_recognition.face_distance(
+                    known_encodings,
+                    face_encoding
+                )
 
-            if face_distances[best_match_index] < 0.5:
-                person_id = known_ids[best_match_index]
-                detected_ids.add(person_id)
+                best_match_index = distances.argmin()
 
+                if distances[best_match_index] < 0.45:
+                    detected_ids.add(known_ids[best_match_index])
+
+        process_this_frame = not process_this_frame
         frame_count += 1
-
-        # Press ESC to stop
-        if cv2.waitKey(1) == 27:
-            break
 
     video.release()
     cv2.destroyAllWindows()

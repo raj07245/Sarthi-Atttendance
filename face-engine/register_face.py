@@ -1,122 +1,74 @@
 import face_recognition
 import cv2
-import pickle
 import os
-import pyttsx3
+import pickle
 import time
-
-engine = pyttsx3.init()
-
-def speak(text):
-    engine.say(text)
-    engine.runAndWait()
+from encoding_cache import update_cache
 
 
-def register_face(admin_id):
+def register_face(admin_id, role="STUDENT"):
 
-    enc_path = f"encodings/admin_{admin_id}.pkl"
+    base_dir = f"encodings/admin_{admin_id}/{role}"
+    os.makedirs(base_dir, exist_ok=True)
 
-    # Load existing encodings
-    if os.path.exists(enc_path):
-
-        with open(enc_path, "rb") as f:
-            data = pickle.load(f)
-
-        known_encodings = data["encodings"]
-        known_ids = data["ids"]
-
-    else:
-        known_encodings = []
-        known_ids = []
-
-    next_id = len(known_ids) + 1
-
-    video = cv2.VideoCapture(0, cv2.CAP_AVFOUNDATION)
+    video = cv2.VideoCapture(0)
 
     if not video.isOpened():
         raise Exception("Camera not accessible")
 
-    print("🚀 FULLY AUTOMATIC ENROLLMENT STARTED")
-    speak("Face registration started")
+    print("🚀 Smart registration started")
 
-    last_capture_time = 0
-    COOLDOWN = 3
-    MAX_NEW_FACES = 5
-    registered_now = 0   # ✅ FIXED
+    person_id = int(time.time())  # unique id
+    captured_encodings = []
 
-    # ✅ TIMEOUT SET
-    start_time = time.time()
-    TIMEOUT = 45   # Recommended
+    start = time.time()
 
-    while registered_now < MAX_NEW_FACES:
+    while len(captured_encodings) < 5:
 
-        # ✅ TIMEOUT CHECK (MOST IMPORTANT)
-        if time.time() - start_time > TIMEOUT:
-            print("⏰ Registration timeout")
-            speak("Registration timeout")
+        if time.time() - start > 40:
             break
 
         success, frame = video.read()
-
-        if not success or frame is None:
+        if not success:
             continue
 
-        try:
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            faces = face_recognition.face_locations(rgb)
+        # Resize = SPEED
+        small = cv2.resize(frame, (0,0), fx=0.25, fy=0.25)
+        rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
 
-        except Exception as e:
-            print("OpenCV crash prevented:", e)
+        faces = face_recognition.face_locations(rgb)
+
+        # Only ONE face allowed (anti proxy)
+        if len(faces) != 1:
             continue
 
-        current_time = time.time()
+        encoding = face_recognition.face_encodings(rgb, faces)[0]
+        captured_encodings.append(encoding)
 
-        if len(faces) == 1 and (current_time - last_capture_time) > COOLDOWN:
+        print(f"Captured frame {len(captured_encodings)}/5")
 
-            encodings = face_recognition.face_encodings(rgb, faces)
+        time.sleep(0.4)
 
-            if len(encodings) > 0:
-
-                new_encoding = encodings[0]
-
-                if len(known_encodings) > 0:
-
-                    matches = face_recognition.compare_faces(
-                        known_encodings,
-                        new_encoding,
-                        tolerance=0.5
-                    )
-
-                    if True in matches:
-                        print("⚠️ Face already registered")
-                        last_capture_time = current_time
-                        continue
-
-                known_encodings.append(new_encoding)
-                known_ids.append(next_id)
-
-                print(f"✅ User Registered -> ID: {next_id}")
-                speak("Face captured")
-
-                registered_now += 1
-                next_id += 1
-                last_capture_time = current_time
-
-    # ✅ VERY IMPORTANT (camera crash prevention)
     video.release()
     cv2.destroyAllWindows()
 
-    data = {
-        "encodings": known_encodings,
-        "ids": known_ids
-    }
+    if len(captured_encodings) == 0:
+        raise Exception("No face captured")
 
-    os.makedirs("encodings", exist_ok=True)
+    # Average encoding = VERY ACCURATE
+    final_encoding = sum(captured_encodings) / len(captured_encodings)
 
-    with open(enc_path, "wb") as f:
-        pickle.dump(data, f)
+    file_path = f"{base_dir}/{person_id}.pkl"
 
-    speak("All faces saved")
-    print("💾 Encodings stored successfully")
+    with open(file_path, "wb") as f:
+        pickle.dump({
+            "encoding": final_encoding,
+            "person_id": person_id
+        }, f)
 
-    return known_ids
+    # 🔥 update RAM cache instantly
+    update_cache(admin_id, role, final_encoding, person_id)
+
+    print("✅ Face registered:", person_id)
+
+    return [person_id]

@@ -1,11 +1,14 @@
+
+from encoding_cache import load_all_encodings
 from flask import Flask, jsonify
 from register_face import register_face
 from recognize_face import recognize_face
 
 app = Flask(__name__)
 
+
 # -------------------------
-# Face Registration Endpoints
+# Registration
 # -------------------------
 @app.post("/admin/<int:teacher_id>/register_face_students")
 def register_students(teacher_id):
@@ -15,6 +18,7 @@ def register_students(teacher_id):
     except Exception as e:
         return jsonify({"registered_ids": [], "error": str(e)}), 500
 
+
 @app.post("/admin/<int:manager_id>/register_face_employees")
 def register_employees(manager_id):
     try:
@@ -23,8 +27,9 @@ def register_employees(manager_id):
     except Exception as e:
         return jsonify({"registered_ids": [], "error": str(e)}), 500
 
+
 # -------------------------
-# Attendance Endpoints
+# Attendance
 # -------------------------
 @app.post("/admin/<int:teacher_id>/attendance_students")
 def attendance_students(teacher_id):
@@ -33,6 +38,7 @@ def attendance_students(teacher_id):
         return jsonify({"matched": matched_ids, "count": len(matched_ids)})
     except Exception as e:
         return jsonify({"matched": [], "error": str(e)}), 500
+
 
 @app.post("/admin/<int:manager_id>/attendance_employees")
 def attendance_employees(manager_id):
@@ -44,4 +50,5 @@ def attendance_employees(manager_id):
 
 
 if __name__ == "__main__":
+    load_all_encodings()   # 🔥 LOAD INTO RAM
     app.run(port=5001, debug=True)
