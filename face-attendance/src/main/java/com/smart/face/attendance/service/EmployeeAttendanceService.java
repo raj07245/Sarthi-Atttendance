@@ -1,6 +1,7 @@
 package com.smart.face.attendance.service;
 
 import com.smart.face.attendance.entity.EmployeeAttendance;
+import com.smart.face.attendance.entity.Organization;
 import com.smart.face.attendance.entity.Person;
 import com.smart.face.attendance.repository.EmployeeAttendanceRepository;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -58,4 +60,5 @@ public class EmployeeAttendanceService {
 
         repo.save(att);
     }
+
 }
