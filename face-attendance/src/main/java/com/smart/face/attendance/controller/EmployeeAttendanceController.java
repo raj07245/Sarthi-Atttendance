@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/employee")
@@ -19,19 +20,23 @@ public class EmployeeAttendanceController {
 
     @PostMapping("/{id}/check-in")
     public ResponseEntity<?> checkIn(@PathVariable Long id) {
-
-        Person emp = personRepository.findById(id).orElseThrow();
+        Person emp = personRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Employee not found with id: " + id));
         service.checkIn(emp);
-
-        return ResponseEntity.ok("Checked In");
+        return ResponseEntity.ok(Map.of("message", "Checked In", "employeeId", emp.getId()));
     }
 
     @PostMapping("/{id}/check-out")
     public ResponseEntity<?> checkOut(@PathVariable Long id) {
-
-        Person emp = personRepository.findById(id).orElseThrow();
+        Person emp = personRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Employee not found with id: " + id));
         service.checkOut(emp);
+        return ResponseEntity.ok(Map.of("message", "Checked Out", "employeeId", emp.getId()));
+    }
 
-        return ResponseEntity.ok("Checked Out");
+    @GetMapping("/all")
+    public ResponseEntity<?> getAllEmployees() {
+        List<Person> employees = service.getAllEmployees();
+        return ResponseEntity.ok(employees);
     }
 }

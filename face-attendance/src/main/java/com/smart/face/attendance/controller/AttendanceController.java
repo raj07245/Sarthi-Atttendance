@@ -5,9 +5,10 @@ import com.smart.face.attendance.entity.Attendance;
 import com.smart.face.attendance.entity.Lecture;
 import com.smart.face.attendance.entity.User;
 import com.smart.face.attendance.entity.UserDetailsImpl;
+import com.smart.face.attendance.exception.NotFoundException;
 import com.smart.face.attendance.repository.AttendanceRepository;
 import com.smart.face.attendance.repository.LectureRepository;
-import com.smart.face.attendance.repository.PersonRepository;
+import com.smart.face.attendance.service.AttendanceQueryService;
 import com.smart.face.attendance.service.AttendanceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,61 +24,30 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AttendanceController {
 
-    private final RestTemplate restTemplate;
-    private final PersonRepository personRepository;
     private final AttendanceService attendanceService;
-    private final AttendanceRepository attendanceRepository;
+    private final AttendanceQueryService queryService;
     private final LectureRepository lectureRepository;
-    private AttendanceRequestDto attendanceRequestDto;
 
-    // ✅ Teacher scans multi-face lecture
-    @PostMapping("/scan")
-    public ResponseEntity<List<Integer>> scan(
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-
-        User admin = userDetails.getUser();
-        String url = "http://127.0.0.1:5001/admin/" + admin.getId() + "/attendance_students";
-
-        Map<String, Object> res = restTemplate.postForObject(url, null, Map.class);
-
-        // ✅ Use correct key from Python response
-        List<Integer> ids = (List<Integer>) res.get("matched");
-
-        return ResponseEntity.ok(ids);
-    }
-
-    // ✅ MARK ATTENDANCE (Python -> Spring)
     @PostMapping("/mark")
-    public ResponseEntity<?> markAttendance(
-            @RequestBody AttendanceRequestDto request
-    ) {
-
+    public ResponseEntity<?> mark(@RequestBody AttendanceRequestDto req) {
         attendanceService.markAttendance(
-                request.getUserIds(),
-                request.getLectureId()
+                req.getUserIds(),
+                req.getLectureId()
         );
-
         return ResponseEntity.ok("Attendance marked");
     }
 
-    // ✅ MY ATTENDANCE
     @GetMapping("/my")
     public List<Attendance> myAttendance(
             @AuthenticationPrincipal UserDetailsImpl userDetails
-    ){
-        return attendanceRepository
-                .findByUser(userDetails.getUser());
+    ) {
+        return queryService.myAttendance(userDetails.getUser());
     }
 
-
-    // ✅ LECTURE ATTENDANCE
     @GetMapping("/lecture/{id}")
-    public List<Attendance> lectureAttendance(
-            @PathVariable Long id
-    ){
+    public List<Attendance> lectureAttendance(@PathVariable Long id) {
         Lecture lecture = lectureRepository.findById(id)
-                .orElseThrow();
-
-        return attendanceRepository.findByLecture(lecture);
+                .orElseThrow(() -> new NotFoundException("Lecture not found"));
+        return queryService.lectureAttendance(lecture);
     }
 }

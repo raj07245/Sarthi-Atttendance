@@ -4,6 +4,7 @@ import com.smart.face.attendance.entity.Attendance;
 import com.smart.face.attendance.entity.Lecture;
 import com.smart.face.attendance.entity.LectureAttendance;
 import com.smart.face.attendance.entity.User;
+import com.smart.face.attendance.exception.NotFoundException;
 import com.smart.face.attendance.repository.AttendanceRepository;
 import com.smart.face.attendance.repository.LectureRepository;
 import com.smart.face.attendance.repository.UserRepository;
@@ -19,29 +20,36 @@ public class AttendanceService {
 
     private final AttendanceRepository attendanceRepository;
     private final UserRepository userRepository;
-    private  final LectureRepository lectureRepository;
+    private final LectureRepository lectureRepository;
+    private final AttendanceRuleEngine ruleEngine;
 
-    public void markAttendance(List<Long> userIds,Long lectureId){
-        Lecture lecture=lectureRepository.findById(lectureId)
-                .orElseThrow(() -> new RuntimeException("Lecture not foud"));
+    public void markAttendance(List<Long> userIds, Long lectureId) {
 
-        for (Long userId: userIds){
-            User student = userRepository.findById(userId)
-                    .orElseThrow(() ->new RuntimeException("User not found"));
+        Lecture lecture = lectureRepository.findById(lectureId)
+                .orElseThrow(() -> new NotFoundException("Lecture not found"));
 
-            if (attendanceRepository
-                    .existsByUserAndLecture(student , lecture)){
+        for (Long uid : userIds) {
+
+            User user = userRepository.findById(uid)
+                    .orElseThrow(() -> new NotFoundException("User not found"));
+
+            if (attendanceRepository.existsByUserAndLecture(user, lecture))
                 continue;
-            }
 
-            Attendance attendance= Attendance.builder()
-                    .user(student)
+            LectureAttendance.Status status =
+                    ruleEngine.calculateStatus(
+                            lecture.getStartTime().atDate(lecture.getDate()),
+                            LocalDateTime.now()
+                    );
+
+            Attendance att = Attendance.builder()
+                    .user(user)
                     .lecture(lecture)
+                    .status(status)
                     .markedAt(LocalDateTime.now())
-                    .status(LectureAttendance.Status.PRESENT)
                     .build();
 
-            attendanceRepository.save(attendance);
+            attendanceRepository.save(att);
         }
     }
 }

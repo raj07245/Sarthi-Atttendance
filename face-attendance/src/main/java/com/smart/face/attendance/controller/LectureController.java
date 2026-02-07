@@ -25,6 +25,7 @@ public class LectureController {
             @AuthenticationPrincipal UserDetailsImpl userDetails
     ){
         Lecture lecture = new Lecture();
+        lecture.setId(lecture.getId());
         lecture.setSubject(subject);
         lecture.setRoom(room);
         lecture.setTeacher(userDetails.getUser());

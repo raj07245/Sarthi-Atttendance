@@ -7,7 +7,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Entity
-@Getter @Setter
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -18,9 +19,7 @@ public class Lecture {
     private Long id;
 
     private String subject;
-
     private LocalDate date;
-
     private String room;
 
     private LocalTime startTime;
@@ -33,6 +32,6 @@ public class Lecture {
     private Boolean active;
 
     public boolean isActive() {
-        return false;
+        return Boolean.TRUE.equals(active);
     }
 }
